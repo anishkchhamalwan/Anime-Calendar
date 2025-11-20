@@ -17,6 +17,8 @@ export default function Profile() {
     }
   };
 
+  
+
   // Remove a reminder
   const removeReminder = async (animeId) => {
     try {

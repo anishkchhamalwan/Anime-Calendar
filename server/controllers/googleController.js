@@ -173,61 +173,127 @@ export const removeEvent = async (req, res) => {
   }
 };
 
+// export const getUserEvents = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+
+//     console.log("Fetching events for user:", userId);
+
+//     const [rows] = await pool.query(
+//       "SELECT anime_mal_id, event_id FROM user_events WHERE user_id = ?",
+//       [userId]
+//     );
+
+//     console.log("DB rows:", rows);
+
+//     if (!rows.length) {
+//       console.log("No events found.");
+//       return res.json([]);
+//     }
+
+//     const animePromises = rows.map(async (item) => {
+//   // Slow sequential Jikan requests
+// const results = [];
+
+// for (let item of rows) {
+//   try {
+//     const res = await axios.get(
+//       `https://api.jikan.moe/v4/anime/${item.anime_mal_id}`
+//     );
+
+//     results.push({
+//       eventId: item.event_id,
+//       animeMALId: item.anime_mal_id,
+//       anime: res.data.data,
+//     });
+//   } catch (err) {
+//     console.log("Jikan failed for:", item.anime_mal_id);
+
+//     // fallback
+//     results.push({
+//       eventId: item.event_id,
+//       animeMALId: item.anime_mal_id,
+//       anime: {
+//         title: "Anime data unavailable",
+//         images: { jpg: { image_url: "https://via.placeholder.com/300" } },
+//         status: "Unknown",
+//         episodes: "Unknown",
+//       },
+//     });
+//   }
+
+//   // WAIT between calls — 1 second is safe
+//   await new Promise(r => setTimeout(r, 1000));
+// }
+
+// res.json(results);
+
+// });
+
+
+//     const results = await Promise.all(animePromises);
+//     res.json(results.filter(Boolean));
+//   } catch (err) {
+//     console.log("heyyyyy");
+//     console.error("getUserEvents error:", err);
+//     res.status(500).json({ message: "Failed to fetch user events" });
+//   }
+// };
+
 export const getUserEvents = async (req, res) => {
   try {
     const userId = req.user.id;
-
-    console.log("Fetching events for user:", userId);
 
     const [rows] = await pool.query(
       "SELECT anime_mal_id, event_id FROM user_events WHERE user_id = ?",
       [userId]
     );
 
-    console.log("DB rows:", rows);
+    if (!rows.length) return res.json([]);
 
-    if (!rows.length) {
-      console.log("No events found.");
-      return res.json([]);
+    const results = [];
+
+    for (let item of rows) {
+      console.log("Fetching anime:", item.anime_mal_id);
+
+      try {
+        // Jikan strict rate limit -> 1 request per second
+        const jikanRes = await axios.get(
+          `https://api.jikan.moe/v4/anime/${item.anime_mal_id}`
+        );
+
+        results.push({
+          eventId: item.event_id,
+          animeMALId: item.anime_mal_id,
+          anime: jikanRes.data.data,
+        });
+      } catch (err) {
+        console.log("Jikan failed for:", item.anime_mal_id, err.response?.status);
+
+        // Fallback data
+        results.push({
+          eventId: item.event_id,
+          animeMALId: item.anime_mal_id,
+          anime: {
+            title: "Anime data unavailable",
+            images: { jpg: { image_url: "https://via.placeholder.com/300" }},
+            status: "Unknown",
+            episodes: "Unknown",
+          },
+        });
+      }
+
+      // WAIT 1 second before next call (required)
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    const animePromises = rows.map(async (item) => {
-  try {
-    const info = await axios.get(
-      `https://api.jikan.moe/v4/anime/${item.anime_mal_id}`
-    );
-    return {
-      eventId: item.event_id,
-      animeMALId: item.anime_mal_id,
-      anime: info.data.data,
-    };
-  } catch (err) {
-    console.error("Jikan fetch failed for:", item.anime_mal_id, err.response?.status);
+    return res.json(results);
 
-    // Fallback so your UI does NOT break
-    return {
-      eventId: item.event_id,
-      animeMALId: item.anime_mal_id,
-      anime: {
-        title: "Anime data unavailable",
-        images: { jpg: { image_url: "https://via.placeholder.com/300x400?text=No+Image" }},
-        status: "Unknown",
-        episodes: "?",
-      },
-    };
-  }
-});
-
-
-    const results = await Promise.all(animePromises);
-    res.json(results.filter(Boolean));
   } catch (err) {
     console.error("getUserEvents error:", err);
-    res.status(500).json({ message: "Failed to fetch user events" });
+    return res.status(500).json({ message: "Failed to fetch user events" });
   }
 };
-
-
 
 
 export const disconnectGoogle = async (req, res) => {
