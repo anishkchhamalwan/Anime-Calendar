@@ -2,57 +2,42 @@ import React, { useState } from "react";
 import axios from "axios";
 import "./styles/App.css";
 
-function App() {
-  const [query, setQuery] = useState("");
-  const [animeList, setAnimeList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
-    setLoading(true);
-    setError("");
-    try {
-      const res = await axios.get(`http://localhost:5000/api/anime/search?name=${query}`);
-      console.log(res.data);
-      setAnimeList(res.data);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to fetch anime App.jsx");
-    } finally {
-      setLoading(false);
-    }
-  };
+import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./context/AuthContext";
 
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import SearchAnime from "./pages/SearchAnime";
+import Profile from "./pages/Profile";
+import GoogleSuccess from "./pages/GoogleSuccess";
+
+export default function App() {
   return (
-    <div className="container">
-      <h1>🎬 Anime Calender</h1>
+    <AuthProvider>
+      <BrowserRouter>
+        <Navbar />
 
-      <div className="search-box">
-        <input
-          type="text"
-          placeholder="Search anime..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <button onClick={handleSearch}>Search</button>
-      </div>
+        <Routes>
+          <Route path="/" element={<SearchAnime />} />
 
-      {loading && <p>Loading...</p>}
-      {error && <p className="error">{error}</p>}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
 
-      <div className="results">
-        {animeList.map((anime) => (
-          <div key={anime.mal_id} className="card">
-            <img src={anime.images.jpg.image_url} alt={anime.title} />
-            <h3>{anime.title}</h3>
-            <p>{anime.status}</p>
-            <p>Episodes: {anime.episodes || "?"}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="/google-success" element={<GoogleSuccess />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
-
-export default App;

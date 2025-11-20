@@ -2,6 +2,7 @@ import {google} from 'googleapis';
 import {createOAuthClient} from '../utils/googleClient.js';
 import pool from '../config/db.js';
 import jwt from "jsonwebtoken";
+import axios from "axios";
 
 
 const SCOPES = ["https://www.googleapis.com/auth/calendar.events"];
@@ -171,6 +172,62 @@ export const removeEvent = async (req, res) => {
     res.status(500).json({ message: "Failed to remove event" });
   }
 };
+
+export const getUserEvents = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    console.log("Fetching events for user:", userId);
+
+    const [rows] = await pool.query(
+      "SELECT anime_mal_id, event_id FROM user_events WHERE user_id = ?",
+      [userId]
+    );
+
+    console.log("DB rows:", rows);
+
+    if (!rows.length) {
+      console.log("No events found.");
+      return res.json([]);
+    }
+
+    const animePromises = rows.map(async (item) => {
+  try {
+    const info = await axios.get(
+      `https://api.jikan.moe/v4/anime/${item.anime_mal_id}`
+    );
+    return {
+      eventId: item.event_id,
+      animeMALId: item.anime_mal_id,
+      anime: info.data.data,
+    };
+  } catch (err) {
+    console.error("Jikan fetch failed for:", item.anime_mal_id, err.response?.status);
+
+    // Fallback so your UI does NOT break
+    return {
+      eventId: item.event_id,
+      animeMALId: item.anime_mal_id,
+      anime: {
+        title: "Anime data unavailable",
+        images: { jpg: { image_url: "https://via.placeholder.com/300x400?text=No+Image" }},
+        status: "Unknown",
+        episodes: "?",
+      },
+    };
+  }
+});
+
+
+    const results = await Promise.all(animePromises);
+    res.json(results.filter(Boolean));
+  } catch (err) {
+    console.error("getUserEvents error:", err);
+    res.status(500).json({ message: "Failed to fetch user events" });
+  }
+};
+
+
 
 
 export const disconnectGoogle = async (req, res) => {

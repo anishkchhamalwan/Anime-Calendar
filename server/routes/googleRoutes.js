@@ -5,7 +5,8 @@ import {
   oauthCallback,
   addEvent,
   removeEvent,
-  disconnectGoogle
+  disconnectGoogle,
+  getUserEvents
 } from "../controllers/googleController.js";
 
 const router = express.Router();
@@ -19,7 +20,11 @@ router.get("/oauth/callback", oauthCallback);
 router.post("/add-event", verifyToken, addEvent);
 router.post("/remove-event", verifyToken, removeEvent);
 
-// Optional: disconnect (revoke tokens)
+router.get("/user-events", verifyToken, getUserEvents);
+
+
+// Not used till now: disconnect (revoke tokens)
 router.post("/disconnect", verifyToken, disconnectGoogle);
+
 
 export default router;
