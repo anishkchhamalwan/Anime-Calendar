@@ -13,8 +13,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://anime-calendar-backend.onrender.com",
-    "https://anime-calendar-hdxl.vercel.app/"
+    "https://anime-calendar-hdxl.vercel.app"
   ],
   credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"]
