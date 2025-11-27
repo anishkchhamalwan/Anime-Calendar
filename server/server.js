@@ -14,7 +14,7 @@ app.use(cors({
   origin: [
     "http://localhost:3000",
     "https://anime-calendar-backend.onrender.com",
-    "https://anime-calendar.vercel.app"
+    "https://anime-calendar-hdxl.vercel.app/"
   ],
   credentials: true
 }));
